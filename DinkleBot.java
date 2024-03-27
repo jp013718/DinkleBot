@@ -59,7 +59,7 @@ public class DinkleBot extends AbstractionLayerAI{
        * 3. The base does not already have a barracks nearby
        */
       boolean needBuilders = barracks.size() == 0 && builders.size() == 0;
-      if (!needBuilders)
+      if (!needBuilders && bases.size() != 0)
         needBuilders = barracks.size() != bases.size() && builders.size() < (bases.size()-barracks.size()) && distance(findClosest(barracks, base), base) > 2;
       /*
        * Decide if we need workers to be trained as harvesters
@@ -86,6 +86,21 @@ public class DinkleBot extends AbstractionLayerAI{
       // To determine if defenders should be made, we need to determine if we have enough already and if
       // the defenders we have are assigned to the nearest base
       Unit base = findClosest(bases, barrack);
+      // If our base is gone, train the best unit we can and rush
+      if (base == null){
+        if(player.getResources() >= RANGED.cost) {
+          train(barrack, RANGED);
+          return;
+        } else if(player.getResources() >= HEAVY.cost) {
+          train(barrack, HEAVY);
+          return;
+        } else if(player.getResources() >= LIGHT.cost) {
+          train(barrack, LIGHT);
+          return;
+        } else {
+          return;
+        }
+      }
       List<Unit> nearbyDefenders = findUnitsWithin(lights, base, 4);
       boolean shouldMakeDefenders = defenders.size() < 5*bases.size() && nearbyDefenders.size() < 5;
       
@@ -145,8 +160,10 @@ public class DinkleBot extends AbstractionLayerAI{
         attack(worker, enemy);
         return;
       }
-
-      int[] barracksPosition = findBarracksLocation(base);
+      if (resource == null) {
+        attack(worker, enemy);
+        return;
+      }
 
       boolean isBuilder = builders.contains(worker);
       boolean isHarvester = harvesters.contains(worker);
@@ -176,22 +193,17 @@ public class DinkleBot extends AbstractionLayerAI{
         return;
       }
 
-      // If the worker is in the way of building a barracks, move
-      if (worker.getX() == barracksPosition[0] && worker.getY() == barracksPosition[1] && canBuildBarracks) {
-        
-      }
-
       if (isHarvester) {
         harvest(worker, resource, base);
         return;
       } else if (isBuilder) {
         /*
          * The current intent is for a builder to make a barracks close to the base, on
-         * the side furthest from the enemy, like so:
+         * the side closest to the enemy, like so:
          * +---+---+---+---+---+          +---+---+---+---+---+
-         * |   |   | b |   |   |          | b |   |   |   |   |
+         * |   |   | B |   |   |          | B |   |   |   |   |
          * +---+---+---+---+---+          +---+---+---+---+---+
-         * |   |   | B |   |   |          |   | B |   |   |   |
+         * |   |   | b |   |   |          |   | b |   |   |   |
          * +---+---+---+---+---+          +---+---+---+---+---+
          * |   |   |   |   |   |          |   |   |   |   |   |
          * +---+---+---+---+---+          +---+---+---+---+---+
@@ -199,8 +211,11 @@ public class DinkleBot extends AbstractionLayerAI{
          * +---+---+---+---+---+          +---+---+---+---+---+
          * |   |   |_B |   |   |          |   |   |   |   |_B |
          * +---+---+---+---+---+          +---+---+---+---+---+
+         * In most maps, this should avoid the barracks getting in the way of nearby
+         * resources, causing the AI to stall
          */
         
+        int[] barracksPosition = findBarracksLocation(base);
         // Build a barracks at the chosen space
         build(worker, BARRACKS, barracksPosition[0], barracksPosition[1]);
       }
@@ -571,3 +586,4 @@ public class DinkleBot extends AbstractionLayerAI{
     return null;
   }
 }
+
