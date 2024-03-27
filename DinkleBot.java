@@ -147,10 +147,12 @@ public class DinkleBot extends AbstractionLayerAI{
     private void assignTask(Unit worker) {
       // Create a copy of the resources list to search for resources that are not
       // at full occupancy
+      Unit resource = null;
       List<Unit> possResources = new ArrayList<>(resources);
-      possResources.removeIf(resource -> findUnitsWithin(units, resource, 1).size()>=2);
-      // Search for the nearest available resource
-      Unit resource = findClosest(possResources, worker);
+      if (possResources.size() > 0)
+        possResources.removeIf(rsrc -> findUnitsWithin(units, rsrc, 1).size()>=2);
+        resource = findClosest(possResources, worker);
+      
       Unit base = findClosest(bases, worker);
       Unit enemy = findClosest(_units, worker);
 
@@ -355,7 +357,7 @@ public class DinkleBot extends AbstractionLayerAI{
        */
       if (isDefender) {
         // Logic to determine if a defender should attack a nearby enemy
-        if (findUnitsWithin(_units, base, 8).size() != 0) {
+        if (findUnitsWithin(_units, base, 8).size() > 0) {
           Unit target = findClosest(_units, base);
           attack(light, target);
           return;
