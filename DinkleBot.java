@@ -310,13 +310,18 @@ public class DinkleBot extends AbstractionLayerAI{
       Unit base = findClosest(bases, light);
       Unit _base = findClosest(_bases, light);
       Unit enemy = findClosest(_units, light);
-      List<Unit> nearbyDefenders = findUnitsWithin(lights, base, 4);
-
+      List<Unit> nearbyDefenders = new ArrayList<>();
       boolean isDefender = defenders.contains(light);
       boolean isAttacker = attackers.contains(light);      
 
       if (enemy == null)
         return;
+      if (base != null) {
+        nearbyDefenders = findUnitsWithin(lights, base, 4);
+      } else if (base == null) {
+        attack(light, enemy);
+        return;
+      }
 
       /* 
        * Determine whether we need defenders based on three conditions:
@@ -326,7 +331,7 @@ public class DinkleBot extends AbstractionLayerAI{
        * If all of these conditions are met and the light unit is unassigned, it will be assigned as a defender
        */
       boolean allEnemiesGone = _workers.size() == 0 && _lights.size() == 0 && _heavies.size() == 0 && _rangers.size() == 0;
-      boolean needDefenders = defenders.size() < 5*bases.size() && nearbyDefenders.size() < 5 && base != null && _base != null && !allEnemiesGone;
+      boolean needDefenders = defenders.size() < 5*bases.size() && nearbyDefenders.size() < 5 && base != null && !allEnemiesGone;
       if (needDefenders && !isAttacker && !isDefender) {
         defenders.add(light);
         isDefender = true;
