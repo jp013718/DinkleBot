@@ -65,7 +65,7 @@ public class DinkleBot extends AbstractionLayerAI{
        * Decide if we need workers to be trained as harvesters
        * 1. The number of harvesters is less than twice the number of resource nodes on the half of the board closest to our base
        */
-      boolean needHarvesters = harvesters.size() < 2*findUnitsWithin(resources, base, (int) Math.sqrt(board.getHeight()*board.getHeight() + board.getWidth()*board.getWidth())/2).size();
+      boolean needHarvesters = harvesters.size() < 2*findUnitsWithin(resources, base, (int) Math.sqrt(board.getHeight()*board.getHeight() + board.getWidth()*board.getWidth())/2).size() && barracks.size() > 0;
 
       if ((needBuilders || needHarvesters) && player.getResources() >= WORKER.cost) {
         train(base, WORKER);
@@ -150,7 +150,7 @@ public class DinkleBot extends AbstractionLayerAI{
       Unit resource = null;
       List<Unit> possResources = new ArrayList<>(resources);
       if (possResources.size() > 0)
-        possResources.removeIf(rsrc -> findUnitsWithin(units, rsrc, 1).size()>=2);
+        possResources.removeIf(rsrc -> findUnitsWithin(units, rsrc, 1).size()>=2 || findUnitsWithin(_bases, rsrc, (int) Math.sqrt(board.getHeight()*board.getHeight()+board.getWidth()*board.getWidth())/4).size() > 0);
         resource = findClosest(possResources, worker);
       
       Unit base = findClosest(bases, worker);
@@ -170,24 +170,27 @@ public class DinkleBot extends AbstractionLayerAI{
       boolean isBuilder = builders.contains(worker);
       boolean isHarvester = harvesters.contains(worker);
 
-      boolean needHarvesters = harvesters.size() < 2*findUnitsWithin(resources, base, (int) Math.sqrt(board.getHeight()*board.getHeight() + board.getWidth()*board.getWidth())/2).size();
+      boolean needHarvesters = harvesters.size() < 2*possResources.size() && barracks.size() > 0;
       boolean canBuildBarracks = player.getResources() >= BARRACKS.cost;
       boolean needBuilders = barracks.size() == 0 && builders.size() == 0;
       if (!needBuilders)
         needBuilders = barracks.size() != bases.size() && builders.size() < (bases.size()-barracks.size()) && distance(findClosest(barracks, base), base) > 2;
       
-      // Prioritize needing harvesters
-      if (!isBuilder && !isHarvester && needHarvesters) {
+      // Prioritize needing harvesters early
+      if (!isBuilder && !isHarvester && harvesters.size() < 3) {
         harvesters.add(worker);
         isHarvester = true;
         // System.out.println("Worker assigned as harvester");
       } 
-      // Otherwise, we need builders
-      else if (!isBuilder && !isHarvester && needBuilders && canBuildBarracks) {
+      // Otherwise, we need a builder
+      else if (!isBuilder && !isHarvester && needBuilders) {
         builders.add(worker);
         isBuilder = true;
         // System.out.println("Worker assigned as builder");
-      } 
+      } else if (!isBuilder && !isHarvester && needHarvesters){
+        harvesters.add(worker);
+        isHarvester = true;
+      }
       // If we have an extra worker for some reason (possibly late game), instruct it to rush
       else if(!isBuilder && !isHarvester){
         attack(worker, enemy);
@@ -198,7 +201,7 @@ public class DinkleBot extends AbstractionLayerAI{
       if (isHarvester) {
         harvest(worker, resource, base);
         return;
-      } else if (isBuilder) {
+      } else if (isBuilder && canBuildBarracks) {
         /*
          * The current intent is for a builder to make a barracks close to the base, on
          * the side closest to the enemy, like so:
@@ -239,6 +242,8 @@ public class DinkleBot extends AbstractionLayerAI{
 
       // Determine all spaces adjacent to the base
       for (int i = -1; i <= 1; i++) {
+        if (i == 0)
+          continue;
         int x = baseX + i;
         int y = baseY + i;
         if (x >= 0 && x < board.getWidth())
@@ -319,6 +324,10 @@ public class DinkleBot extends AbstractionLayerAI{
       if (base != null) {
         nearbyDefenders = findUnitsWithin(lights, base, 4);
       } else if (base == null) {
+        attack(light, enemy);
+        return;
+      }
+      if (_base == null) {
         attack(light, enemy);
         return;
       }
